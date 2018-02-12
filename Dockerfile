@@ -1,5 +1,5 @@
-From ubuntu:trusty
-MAINTAINER Elliott Ye
+From ubuntu:xenial
+MAINTAINER Leonardo Di Lella
 
 # Set noninteractive mode for apt-get
 ENV DEBIAN_FRONTEND noninteractive
@@ -9,7 +9,7 @@ RUN apt-get update
 
 # Start editing
 # Install package here for cache
-RUN apt-get -y install supervisor postfix sasl2-bin opendkim opendkim-tools dovecot-core dovecot-imapd dovecot-lmtpd dovecot-managesieved dovecot-pop3d dovecot-sieve
+RUN apt-get -y install supervisor postfix sasl2-bin opendkim opendkim-tools dovecot-core dovecot-imapd dovecot-lmtpd dovecot-managesieved dovecot-pop3d dovecot-sieve rsyslog
 
 # Add files
 ADD assets/install.sh /opt/install.sh
@@ -27,13 +27,21 @@ RUN sed -i -e 's/include_try \/usr\/share\/dovecot\/protocols\.d/include_try \/e
   mkdir /etc/dovecot/ssl && \
   chmod 755 /etc/dovecot/ssl  && \
   cd /usr/share/dovecot && \
-  ./mkcert.sh  && \
   mkdir /usr/lib/dovecot/sieve-pipe && \
   chmod 755 /usr/lib/dovecot/sieve-pipe  && \
   mkdir /usr/lib/dovecot/sieve-filter && \
   chmod 755 /usr/lib/dovecot/sieve-filter
 
+# Workaround for log error
+# https://bugs.launchpad.net/ubuntu/+source/rsyslog/+bug/830046
+RUN rm -rf /etc/rsyslog.d/50-default.conf
+
+# TODO: Disable imklog for now, re-enable it later! Will be important to debug OOM
+ADD target/rsyslog.conf /etc/rsyslog.conf
+
 # Run
+ADD target/postfix.sh /opt/postfix.sh
+RUN chmod +x /opt/postfix.sh
 CMD /opt/install.sh;/usr/bin/supervisord -c /etc/supervisor/supervisord.conf
 
 EXPOSE 25 587 143 465 993 110 995 4190

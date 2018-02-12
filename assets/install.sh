@@ -10,67 +10,20 @@ cat > /etc/supervisor/conf.d/supervisord.conf <<EOF
 [supervisord]
 nodaemon=true
 
-[program:postfix]
-stdout_logfile  = /proc/self/fd/2
-stderr_logfile  = /proc/self/fd/2
-stderr_logfile_maxbytes=0
-stdout_logfile_maxbytes=0
-command=/opt/postfix.sh
-
-[unix_http_server]
-file=/tmp/supervisor.sock   ; (the path to the socket file)
-
-[supervisord]
-logfile=/tmp/supervisord.log ; (main log file;default $CWD/supervisord.log)
-logfile_maxbytes=50MB        ; (max main logfile bytes b4 rotation;default 50MB)
-logfile_backups=10           ; (num of main logfile rotation backups;default 10)
-loglevel=info                ; (log level;default info; others: debug,warn,trace)
-pidfile=/tmp/supervisord.pid ; (supervisord pidfile;default supervisord.pid)
-nodaemon=false               ; (start in foreground if true;default false)
-minfds=1024                  ; (min. avail startup file descriptors;default 1024)
-minprocs=200                 ; (min. avail process descriptors;default 200)
-
-; the below section must remain in the config file for RPC
-; (supervisorctl/web interface) to work, additional interfaces may be
-; added by defining them in separate rpcinterface: sections
-[rpcinterface:supervisor]
-supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
-
-[supervisorctl]
-serverurl=unix:///tmp/supervisor.sock ; use a unix:// URL  for a unix socket
-
-[program:postfix-errlog]
-command=tail -f /var/log/mail.err
-stdout_events_enabled=true
-stderr_events_enabled=true
-
-[program:postfix-infolog]
-command=tail -f /var/log/mail.info
-stdout_events_enabled=true
-stderr_events_enabled=true
-
-[program:postfix-maillog]
-command=tail -f /var/log/mail.log
-stdout_events_enabled=true
-stderr_events_enabled=true
-
-[program:postfix-warnlog]
-command=tail -f /var/log/mail.warn
-stdout_events_enabled=true
-stderr_events_enabled=true
-
 [program:rsyslog]
-command=/usr/sbin/rsyslogd -n -c3
+autorestart=true
+command=/usr/sbin/rsyslogd -n
+
+[program:postfix]
+startsecs=0
+autostart=true
+autorestart=false
+command=/opt/postfix.sh
 EOF
 
 ############
 #  postfix
 ############
-cat >> /opt/postfix.sh <<EOF
-#!/bin/bash
-service postfix start
-EOF
-chmod +x /opt/postfix.sh
 postconf -e myhostname=$maildomain
 postconf -F '*/*/chroot = n'
 
@@ -99,7 +52,7 @@ chown postfix.sasl /etc/sasldb2
 ############
 # Enable TLS
 ############
-if [[ -n "$(find /etc/postfix/certs -iname *.crt)" && -n "$(find /etc/postfix/certs -iname *.key)" ]]; then
+if [[ -d "/etc/postfix/certs" && -n "$(find /etc/postfix/certs -iname *.crt)" && -n "$(find /etc/postfix/certs -iname *.key)" ]]; then
   # /etc/postfix/main.cf
   postconf -e smtpd_tls_cert_file=$(find /etc/postfix/certs -iname *.crt)
   postconf -e smtpd_tls_key_file=$(find /etc/postfix/certs -iname *.key)
@@ -119,7 +72,7 @@ fi
 #  opendkim
 #############
 
-if [[ -z "$(find /etc/opendkim/domainkeys -iname *.private)" ]]; then
+if [[ ! -d "/etc/opendkim/domainkeys" || -z "$(find /etc/opendkim/domainkeys -iname *.private)" ]]; then
   exit 0
 fi
 cat >> /etc/supervisor/conf.d/supervisord.conf <<EOF
@@ -184,3 +137,4 @@ chown opendkim:opendkim $(find /etc/opendkim/domainkeys -iname *.private)
 chown -R opendkim:opendkim /etc/opendkim/domainkeys
 chmod 400 $(find /etc/opendkim/domainkeys -iname *.private)
 
+service rsyslogd restart
