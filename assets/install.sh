@@ -13,6 +13,48 @@ nodaemon=true
 [program:postfix]
 command=/opt/postfix.sh
 
+[unix_http_server]
+file=/tmp/supervisor.sock   ; (the path to the socket file)
+
+[supervisord]
+logfile=/tmp/supervisord.log ; (main log file;default $CWD/supervisord.log)
+logfile_maxbytes=50MB        ; (max main logfile bytes b4 rotation;default 50MB)
+logfile_backups=10           ; (num of main logfile rotation backups;default 10)
+loglevel=info                ; (log level;default info; others: debug,warn,trace)
+pidfile=/tmp/supervisord.pid ; (supervisord pidfile;default supervisord.pid)
+nodaemon=false               ; (start in foreground if true;default false)
+minfds=1024                  ; (min. avail startup file descriptors;default 1024)
+minprocs=200                 ; (min. avail process descriptors;default 200)
+
+; the below section must remain in the config file for RPC
+; (supervisorctl/web interface) to work, additional interfaces may be
+; added by defining them in separate rpcinterface: sections
+[rpcinterface:supervisor]
+supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
+
+[supervisorctl]
+serverurl=unix:///tmp/supervisor.sock ; use a unix:// URL  for a unix socket
+
+[program:postfix-errlog]
+command=tail -f /var/log/mail.err
+stdout_events_enabled=true
+stderr_events_enabled=true
+
+[program:postfix-infolog]
+command=tail -f /var/log/mail.info
+stdout_events_enabled=true
+stderr_events_enabled=true
+
+[program:postfix-maillog]
+command=tail -f /var/log/mail.log
+stdout_events_enabled=true
+stderr_events_enabled=true
+
+[program:postfix-warnlog]
+command=tail -f /var/log/mail.warn
+stdout_events_enabled=true
+stderr_events_enabled=true
+
 [program:rsyslog]
 command=/usr/sbin/rsyslogd -n -c3
 EOF
@@ -23,7 +65,6 @@ EOF
 cat >> /opt/postfix.sh <<EOF
 #!/bin/bash
 service postfix start
-tail -f /var/log/mail.log
 EOF
 chmod +x /opt/postfix.sh
 postconf -e myhostname=$maildomain
@@ -85,6 +126,7 @@ postconf -e milter_protocol=2
 postconf -e milter_default_action=accept
 postconf -e smtpd_milters=inet:localhost:12301
 postconf -e non_smtpd_milters=inet:localhost:12301
+postconf -e "mynetworks=127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128 172.16.0.0/12 192.168.0.0/16 10.0.0.0/8"
 
 cat >> /etc/opendkim.conf <<EOF
 AutoRestart             Yes
@@ -116,7 +158,9 @@ EOF
 cat >> /etc/opendkim/TrustedHosts <<EOF
 127.0.0.1
 localhost
-192.168.0.1/24
+192.168.0.0/16
+10.0.0.0/8
+172.16.0.0/12
 
 *.$maildomain
 EOF
@@ -129,3 +173,4 @@ EOF
 chown opendkim:opendkim $(find /etc/opendkim/domainkeys -iname *.private)
 chown -R opendkim:opendkim /etc/opendkim/domainkeys
 chmod 400 $(find /etc/opendkim/domainkeys -iname *.private)
+

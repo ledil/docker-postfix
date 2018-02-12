@@ -9,7 +9,7 @@ RUN apt-get update
 
 # Start editing
 # Install package here for cache
-RUN apt-get -y install supervisor postfix sasl2-bin opendkim opendkim-tools
+RUN apt-get -y install supervisor postfix sasl2-bin opendkim opendkim-tools dovecot-core dovecot-imapd dovecot-lmtpd dovecot-managesieved dovecot-pop3d dovecot-sieve
 
 # Add files
 ADD assets/install.sh /opt/install.sh
