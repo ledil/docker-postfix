@@ -127,4 +127,5 @@ cat >> /etc/opendkim/SigningTable <<EOF
 *@$maildomain mail._domainkey.$maildomain
 EOF
 chown opendkim:opendkim $(find /etc/opendkim/domainkeys -iname *.private)
+chown -R opendkim:opendkim /etc/opendkim/domainkeys
 chmod 400 $(find /etc/opendkim/domainkeys -iname *.private)
