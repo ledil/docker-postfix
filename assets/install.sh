@@ -11,6 +11,10 @@ cat > /etc/supervisor/conf.d/supervisord.conf <<EOF
 nodaemon=true
 
 [program:postfix]
+stdout_logfile  = /proc/self/fd/2
+stderr_logfile  = /proc/self/fd/2
+stderr_logfile_maxbytes=0
+stdout_logfile_maxbytes=0
 command=/opt/postfix.sh
 
 [unix_http_server]
@@ -119,6 +123,10 @@ fi
 cat >> /etc/supervisor/conf.d/supervisord.conf <<EOF
 
 [program:opendkim]
+stdout_logfile  = /proc/self/fd/2
+stderr_logfile  = /proc/self/fd/2
+stderr_logfile_maxbytes=0
+stdout_logfile_maxbytes=0
 command=/usr/sbin/opendkim -f
 EOF
 # /etc/postfix/main.cf

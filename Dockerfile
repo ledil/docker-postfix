@@ -14,5 +14,26 @@ RUN apt-get -y install supervisor postfix sasl2-bin opendkim opendkim-tools dove
 # Add files
 ADD assets/install.sh /opt/install.sh
 
+# Configures Dovecot
+# Configures Dovecot
+COPY target/dovecot/auth-passwdfile.inc target/dovecot/??-*.conf /etc/dovecot/conf.d/
+RUN sed -i -e 's/include_try \/usr\/share\/dovecot\/protocols\.d/include_try \/etc\/dovecot\/protocols\.d/g' /etc/dovecot/dovecot.conf && \
+  sed -i -e 's/#mail_plugins = \$mail_plugins/mail_plugins = \$mail_plugins sieve/g' /etc/dovecot/conf.d/15-lda.conf && \
+  sed -i -e 's/^.*lda_mailbox_autocreate.*/lda_mailbox_autocreate = yes/g' /etc/dovecot/conf.d/15-lda.conf && \
+  sed -i -e 's/^.*lda_mailbox_autosubscribe.*/lda_mailbox_autosubscribe = yes/g' /etc/dovecot/conf.d/15-lda.conf && \
+  sed -i -e 's/^.*postmaster_address.*/postmaster_address = '${POSTMASTER_ADDRESS:="postmaster@domain.com"}'/g' /etc/dovecot/conf.d/15-lda.conf && \
+  sed -i 's/#imap_idle_notify_interval = 2 mins/imap_idle_notify_interval = 29 mins/' /etc/dovecot/conf.d/20-imap.conf && \
+  # stretch-backport of dovecot needs this folder
+  mkdir /etc/dovecot/ssl && \
+  chmod 755 /etc/dovecot/ssl  && \
+  cd /usr/share/dovecot && \
+  ./mkcert.sh  && \
+  mkdir /usr/lib/dovecot/sieve-pipe && \
+  chmod 755 /usr/lib/dovecot/sieve-pipe  && \
+  mkdir /usr/lib/dovecot/sieve-filter && \
+  chmod 755 /usr/lib/dovecot/sieve-filter
+
 # Run
 CMD /opt/install.sh;/usr/bin/supervisord -c /etc/supervisor/supervisord.conf
+
+EXPOSE 25 587 143 465 993 110 995 4190
