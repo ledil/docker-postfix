@@ -18,7 +18,8 @@ TLS and OpenDKIM support are optional.
 1. Create postfix container with smtp authentication
 
 	```bash
-	$ sudo docker run -p 25:25 \
+	$ HOST_IP=`ip -4 addr show scope global dev docker0 | grep inet | awk '{print \$2}' | cut -d / -f 1`
+	$ sudo docker run -p 25:25 --add-host outside:$HOST_IP \
 			-e maildomain=mail.example.com -e smtp_user=user:pwd \
 			--name postfix -d coinapse/docker-postfix
 	# Set multiple user credentials: -e smtp_user=user1:pwd1,user2:pwd2,...,userN:pwdN
